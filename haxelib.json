@@ -1,0 +1,11 @@
+{
+    "name":         "android-haxe",
+    "classPath":    "src",
+    "url":          "https://github.com/waneck/android-haxe",
+    "license":      "MIT",
+    "tags":         ["android","mobile"],
+    "description":  "Simple set of tools to allow Haxe to be integrated with android studio projects",
+    "version":      "0.0.1-alpha",
+    "releasenote":  "Initial plugin",
+    "contributors": ["waneck"]
+}

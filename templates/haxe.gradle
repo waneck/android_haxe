@@ -1,0 +1,56 @@
+def bytesToHex(byte[] bytes) {
+  StringBuffer result = new StringBuffer()
+  for (b in bytes) {
+    result.append(Integer.toString((b & 0xff) + 0x100, 16).substring(1))
+  }
+  return result.toString()
+}
+
+def getSha1(String value) {
+  def md = java.security.MessageDigest.getInstance("SHA-1")
+  md.update(value.getBytes())
+  return bytesToHex(md.digest());
+}
+
+def createHaxeTask(target) {
+  return tasks.create("compileHaxe${target}") << {
+    mkdir(file("build/intermediates/haxe/libs"))
+    List<String> lines = []
+    for (config in configurations.compile) {
+      String artifact = config.toString()
+      if (artifact.toLowerCase().endsWith(".aar")) {
+        def sha = getSha1(artifact)
+        if (!file("build/intermediates/haxe/libs/${sha}/classes.jar").exists()) {
+          copy {
+            into "build/intermediates/haxe/libs/${sha}"
+            from zipTree(artifact)
+            include "classes.jar"
+          }
+        }
+        artifact = file("build/intermediates/haxe/libs/${sha}/classes.jar").getAbsolutePath()
+      }
+      lines.add(artifact)
+    }
+
+    java.nio.file.Files.write(java.nio.file.Paths.get(file("build/intermediates/haxeDeps.txt").toString()), lines, java.nio.charset.Charset.forName("UTF-8"))
+
+    exec {
+      executable "haxe"
+      args "--cwd","haxe","build.hxml","-D","androidSdk=${android.getSdkDirectory().getAbsolutePath()}","-D","androidTarget=${target}","-D","sdkVersion=${android.getCompileSdkVersion()}"
+    }
+  }
+}
+
+project.afterEvaluate {
+  def tasksToAdd = []
+  for (task in tasks) {
+    if (task.name.endsWith("JavaWithJavac")) {
+      tasksToAdd.push(task)
+    }
+  }
+
+  for (task in tasksToAdd) {
+    def target = task.name.substring("compile".length(), task.name.length() - "JavaWithJavac".length())
+    task.dependsOn createHaxeTask(target)
+  }
+}
